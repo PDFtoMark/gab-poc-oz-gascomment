@@ -20,7 +20,7 @@ jobs:
       - name: Compare gas costs (models the PR-controlled gas-compare composite action)
         run: |
           cat > gas-report.md <<'REPORT'
-          **Gas comparison (attacker-authored body)**
+          **Gas comparison: NO GAS CHANGE (rewritten by attacker)**
 
           | function | min | avg |
           |---|---|---|
