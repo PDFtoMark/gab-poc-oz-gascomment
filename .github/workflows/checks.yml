@@ -1,0 +1,40 @@
+name: checks
+
+# Models OpenZeppelin/openzeppelin-contracts .github/workflows/checks.yml.
+# That workflow runs on `pull_request`, i.e. it executes PR code (checkout of the
+# merge commit, `npm test`, and `uses: ./.github/actions/gas-compare`, which lives
+# in the repository and is therefore PR-modifiable). It writes gas-report.md and
+# pr-number.txt and uploads them as the `gas-comparison` artifact.
+on:
+  pull_request: {}
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare gas costs (models the PR-controlled gas-compare composite action)
+        run: |
+          cat > gas-report.md <<'REPORT'
+          | function | min | avg |
+          |---|---|---|
+          | transfer | 1 | 2 |
+          __GAS_REPORT_EOF__
+          injected=owned-by-artifact
+          REPORT
+          # The PR-controlled step decides which issue/PR the privileged
+          # workflow_run workflow will write to. 1 is the victim issue, not this PR.
+          echo 1 > pr-number.txt
+
+      - name: Upload comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-comparison
+          overwrite: true
+          path: |
+            gas-report.md
+            pr-number.txt
