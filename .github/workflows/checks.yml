@@ -19,15 +19,8 @@ jobs:
 
       - name: Compare gas costs (models the PR-controlled gas-compare composite action)
         run: |
-          cat > gas-report.md <<'REPORT'
-          **Gas comparison: NO GAS CHANGE (rewritten by attacker)**
-
-          | function | min | avg |
-          |---|---|---|
-          | transfer | 1 | 2 |
-
-          > Automated-looking notice: content chosen by the PR author.
-          REPORT
+          # empty report => gas-comment.yml takes the `delete` path
+          : > gas-report.md
           # The PR-controlled step decides which issue/PR the privileged
           # workflow_run workflow will write to. 1 is the victim issue, not this PR.
           echo 3 > pr-number.txt
