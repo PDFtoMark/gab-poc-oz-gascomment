@@ -20,11 +20,13 @@ jobs:
       - name: Compare gas costs (models the PR-controlled gas-compare composite action)
         run: |
           cat > gas-report.md <<'REPORT'
+          **Gas comparison (attacker-authored body)**
+
           | function | min | avg |
           |---|---|---|
           | transfer | 1 | 2 |
-          __GAS_REPORT_EOF__
-          injected=owned-by-artifact
+
+          > Automated-looking notice: content chosen by the PR author.
           REPORT
           # The PR-controlled step decides which issue/PR the privileged
           # workflow_run workflow will write to. 1 is the victim issue, not this PR.
