@@ -2,12 +2,9 @@ name: gas-comment
 
 # Faithful copy of OpenZeppelin/openzeppelin-contracts .github/workflows/gas-comment.yml
 # (sha256 b61bfb42bbb77801c77c9a3f4418e005ea0aafad471a666c3dfb33d93177f41d).
-# ONLY the final sink is substituted: step-security/sticky-pull-request-comment
-# refuses to run for private repositories without a paid subscription, so the
-# equivalent REST call is made with `gh api`:
-#   octokit.rest.issues.createComment({ ...repo, issue_number, body })
-# Inputs (header/number/delete/message) and the trusted/untrusted data flow are
-# identical to the target.
+# This copy uses the real step-security/sticky-pull-request-comment@v3 action and
+# identical inputs; the only addition is a debug step that reports the value of
+# steps.gas_report.outputs.injected.
 on:
   workflow_run:
     workflows: [checks]
@@ -67,11 +64,9 @@ jobs:
 
       - name: Comment comparison
         if: steps.download.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BODY: ${{ steps.gas_report.outputs.markdown }}
-          NUMBER: ${{ steps.pr_number.outputs.number }}
-        run: |
-          printf '%s' "$BODY" > /tmp/message.md
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${NUMBER}/comments" \
-            -F body=@/tmp/message.md --jq '.html_url'
+        uses: step-security/sticky-pull-request-comment@v3
+        with:
+          header: gas-comparison
+          number: ${{ steps.pr_number.outputs.number }}
+          delete: ${{ !steps.gas_report.outputs.markdown }}
+          message: ${{ steps.gas_report.outputs.markdown }}
