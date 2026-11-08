@@ -1,0 +1,77 @@
+name: gas-comment
+
+# Faithful copy of OpenZeppelin/openzeppelin-contracts .github/workflows/gas-comment.yml
+# (sha256 b61bfb42bbb77801c77c9a3f4418e005ea0aafad471a666c3dfb33d93177f41d).
+# ONLY the final sink is substituted: step-security/sticky-pull-request-comment
+# refuses to run for private repositories without a paid subscription, so the
+# equivalent REST call is made with `gh api`:
+#   octokit.rest.issues.createComment({ ...repo, issue_number, body })
+# Inputs (header/number/delete/message) and the trusted/untrusted data flow are
+# identical to the target.
+on:
+  workflow_run:
+    workflows: [checks]
+    types: [completed]
+
+concurrency:
+  group: gas-comment-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  comment:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read # download the artifact from the triggering run
+      pull-requests: write # required by step-security/sticky-pull-request-comment
+    steps:
+      - name: Download comparison
+        id: download
+        continue-on-error: true # no artifact => nothing to compare, not an error
+        uses: actions/download-artifact@v8
+        with:
+          name: gas-comparison
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Read PR number
+        if: steps.download.outcome == 'success'
+        id: pr_number
+        # pr-number.txt comes from a run that executed untrusted PR code: keep digits
+        # only, so it cannot inject extra lines into GITHUB_OUTPUT.
+        run: echo "number=$(head -c 16 pr-number.txt | tr -dc '0-9')" >> "$GITHUB_OUTPUT"
+
+      - name: Read comparison
+        if: steps.download.outcome == 'success'
+        id: gas_report
+        run: |
+          if [ -f gas-report.md ] && [ -s gas-report.md ]; then
+            {
+              echo 'markdown<<__GAS_REPORT_EOF__'
+              echo '<details>'
+              echo '<summary>view gas comparison</summary>'
+              echo ''
+              cat gas-report.md
+              echo ''
+              echo '</details>'
+              echo '__GAS_REPORT_EOF__'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      # Debug-only: observes what the attacker's __GAS_REPORT_EOF__ line did.
+      - name: Observe injected step output
+        if: steps.download.outcome == 'success'
+        run: echo "injected=[${{ steps.gas_report.outputs.injected }}]"
+
+      - name: Comment comparison
+        if: steps.download.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BODY: ${{ steps.gas_report.outputs.markdown }}
+          NUMBER: ${{ steps.pr_number.outputs.number }}
+        run: |
+          printf '%s' "$BODY" > /tmp/message.md
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${NUMBER}/comments" \
+            -F body=@/tmp/message.md --jq '.html_url'
