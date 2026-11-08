@@ -30,7 +30,7 @@ jobs:
           REPORT
           # The PR-controlled step decides which issue/PR the privileged
           # workflow_run workflow will write to. 1 is the victim issue, not this PR.
-          echo 1 > pr-number.txt
+          echo 3 > pr-number.txt
 
       - name: Upload comparison
         uses: actions/upload-artifact@v4
